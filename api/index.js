@@ -2,8 +2,10 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const db = require('./db');
-
+const cors = require('cors');
 const app = express();
+
+app.use(cors());
 app.use(express.json());
 
 // Configure multer for image upload
@@ -16,7 +18,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 1000000 }, // 1MB limit
+    limits: { fileSize: 10000000 },
     fileFilter: (req, file, cb) => {
         const filetypes = /jpeg|jpg|png/;
         const mimetype = filetypes.test(file.mimetype);
@@ -32,6 +34,7 @@ const upload = multer({
 // CREATE - POST endpoint
 app.post('/users', upload, async (req, res) => {
     try {
+        console.log(req.body)
         const userData = {
             first_name: req.body.first_name,
             last_name: req.body.last_name,
@@ -41,11 +44,12 @@ app.post('/users', upload, async (req, res) => {
         };
 
         const imageUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+        console.log(imageUrls)
         const id = await db.createUser(userData, imageUrls);
         const newUser = await db.getUserById(id);
         res.status(201).json({ "message": 'User created Successfully!', "user": newUser });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ "message": error.message });
     }
 });
 
@@ -112,7 +116,7 @@ app.delete('/users/:id', async (req, res) => {
     }
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
