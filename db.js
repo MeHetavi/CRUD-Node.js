@@ -1,10 +1,12 @@
 const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
 
 const pool = new Pool({
-  user: 'username',
+  user: 'Username',
   host: 'localhost',
   database: 'Node_CRUD',
-  password: 'password',
+  password: 'Password',
   port: 5432,
 });
 
@@ -118,7 +120,6 @@ const updateUser = async (id, userData, imageUrls = []) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN')
-    console.log(userData)
     // Update user
     const userResult = await client.query(
       `UPDATE users 
@@ -159,13 +160,23 @@ const updateUser = async (id, userData, imageUrls = []) => {
 // DELETE - Delete a user (will cascade delete their images)
 const deleteUser = async (id) => {
   try {
+    const images = await pool.query(`SELECT IMAGE_URL FROM USER_IMAGES WHERE USER_ID = ${id}`);
     const result = await pool.query(
       `DELETE FROM users WHERE id = ${id}`
     );
+    images.rows.map((image) => {
+      fs.unlink(
+        path.join(__dirname, image.image_url),
+        (err) => {
+          console.log(err)
+        }
+      );
+    });
     return result.rowCount;
   } catch (error) {
     throw error;
   }
+
 };
 
 module.exports = {

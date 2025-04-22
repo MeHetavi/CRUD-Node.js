@@ -27,7 +27,7 @@ const upload = multer({
         }
         cb(new Error('Only .png, .jpg and .jpeg format allowed!'));
     }
-}).array('images');
+}).any('images');
 
 // CREATE - POST endpoint
 app.post('/users', upload, async (req, res) => {
@@ -53,7 +53,10 @@ app.post('/users', upload, async (req, res) => {
 app.get('/users', async (req, res) => {
     try {
         const users = await db.getAllUsers();
-        res.json(users);
+        if (users.length === 0) {
+            res.json({ 'message': `No users created yet.` });
+        }
+        res.json({ 'message': `Details of all users`, 'Users': users });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -61,12 +64,13 @@ app.get('/users', async (req, res) => {
 
 // READ - GET single user endpoint
 app.get('/users/:id', async (req, res) => {
+    const id = req.params.id;
     try {
-        const user = await db.getUserById(req.params.id);
+        const user = await db.getUserById(id);
         if (user) {
-            res.json(user);
+            res.json({ 'message': `Details of user having id ${id}`, 'User Details': user });
         } else {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User does not exist.' });
         }
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -76,10 +80,16 @@ app.get('/users/:id', async (req, res) => {
 // UPDATE - PUT endpoint
 app.put('/users/:id', upload, async (req, res) => {
     try {
-        const userData = req.body;
-        const imageUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
-        const user = await db.updateUser(req.params.id, userData, imageUrls);
-        res.json({ "message": 'User updated Successfully!', "user": user });
+        const user = await db.getUserById(req.params.id);
+        if (user) {
+            const userData = req.body;
+            const imageUrls = req.files ? req.files.map(file => `/uploads/${file.filename}`) : [];
+            const updatedUser = await db.updateUser(req.params.id, userData, imageUrls);
+            res.json({ "message": 'User updated Successfully!', "user": updatedUser });
+        }
+        else {
+            res.status(404).json({ message: 'User does not exist.' });
+        }
     } catch (error) {
         console.log(error)
         res.status(500).json({ error: error.message });
@@ -94,7 +104,7 @@ app.delete('/users/:id', async (req, res) => {
         if (user) {
             res.json({ message: `User with id ${id} deleted successfully` });
         } else {
-            res.status(404).json({ message: 'User not found' });
+            res.status(404).json({ message: 'User does not exist.' });
         }
     } catch (error) {
         console.log(error)
